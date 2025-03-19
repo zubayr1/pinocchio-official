@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "pinocchio-pubkey"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "five8_const",
  "pinocchio",
