@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - programs/associated-token-account
+          - programs/memo
           - programs/system
           - programs/token
           - sdk/log/crate
