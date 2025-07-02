@@ -13,6 +13,8 @@ use crate::{
     BPF_ALIGN_OF_U128, NON_DUP_MARKER,
 };
 
+use core::mem::MaybeUninit;
+
 /// Start address of the memory region used for program heap.
 pub const HEAP_START_ADDRESS: u64 = 0x300000000;
 
@@ -449,7 +451,6 @@ macro_rules! default_allocator {
         #[global_allocator]
         static A: $crate::entrypoint::BumpAllocator = $crate::entrypoint::BumpAllocator {
             start: $crate::entrypoint::HEAP_START_ADDRESS as usize,
-            len: $crate::entrypoint::HEAP_LENGTH,
         };
 
         /// A default allocator for when the program is compiled on a target different than
@@ -468,7 +469,7 @@ macro_rules! default_allocator {
 /// Using this macro with the "`std`" feature enabled will result in a compile error.
 #[cfg(feature = "std")]
 #[macro_export]
-macro_rules! no_allocator {
+macro_rules! panic_on_alloc {
     () => {
         compile_error!("Feature 'std' cannot be enabled.");
     };
@@ -485,7 +486,7 @@ macro_rules! no_allocator {
 /// This is used when the `"std"` feature is disabled.
 #[cfg(not(feature = "std"))]
 #[macro_export]
-macro_rules! no_allocator {
+macro_rules! panic_on_alloc {
     () => {
         #[cfg(target_os = "solana")]
         #[global_allocator]
@@ -507,9 +508,14 @@ macro_rules! no_allocator {
         // Make this `const` once `const_mut_refs` is stable for the platform-tools
         // toolchain Rust version.
         #[inline(always)]
-        pub unsafe fn allocate_unchecked<T: Sized>(offset: usize) -> &'static mut T {
+        pub unsafe fn allocate_unchecked<T: Sized>(offset: usize) -> &'static mut MaybeUninit<T> {
             // SAFETY: The pointer is within a valid range and aligned to `T`.
-            unsafe { &mut *(calculate_offset::<T>(offset) as *mut T) }
+            let start = HEAP_START_ADDRESS as usize + offset;
+            let end = start + core::mem::size_of::<T>();
+            const_assert!(core::mem::align_of::<T>() <= MAX_HEAP_ALIGNMENT);
+            const_assert!(end <= (HEAP_START_ADDRESS as usize ) + HEAP_LENGTH);
+
+            unsafe { &mut *(calculate_offset::<T>(offset) as *mut MaybeUninit T) }
         }
 
         #[inline(always)]
@@ -549,11 +555,12 @@ mod alloc {
     //! The bump allocator used as the default rust heap when running programs.
 
     extern crate alloc;
+    use static_assertions::const_assert;
+    use crate::entrypoint::{HEAP_START_ADDRESS, HEAP_LENGTH};
 
     /// The bump allocator used as the default rust heap when running programs.
     pub struct BumpAllocator {
         pub start: usize,
-        pub len: usize,
     }
 
     /// Integer arithmetic in this global allocator implementation is safe when
@@ -569,7 +576,7 @@ mod alloc {
             let mut pos = *pos_ptr;
             if pos == 0 {
                 // First time, set starting position.
-                pos = self.start + self.len;
+                pos = self.start + HEAP_LENGTH;
             }
             pos = pos.saturating_sub(layout.size());
             pos &= !(layout.align().wrapping_sub(1));
@@ -584,6 +591,8 @@ mod alloc {
             // I'm a bump allocator, I don't free.
         }
     }
+
+
 }
 
 #[cfg(not(feature = "std"))]
@@ -601,4 +610,18 @@ unsafe impl core::alloc::GlobalAlloc for NoAllocator {
     unsafe fn dealloc(&self, _: *mut u8, _: core::alloc::Layout) {
         // I deny all allocations, so I don't need to free.
     }
+}
+
+#[cfg(not(feature = "std"))]
+impl NoAllocator {
+    #[inline(always)]
+        pub unsafe fn allocate_unchecked<T: Sized>(offset: usize) -> &'static mut MaybeUninit<T> {
+            // SAFETY: The pointer is within a valid range and aligned to `T`.
+            let start = HEAP_START_ADDRESS as usize + offset;
+            let end = start + core::mem::size_of::<T>();
+            const_assert!(core::mem::align_of::<T>() <= MAX_HEAP_ALIGNMENT);
+            const_assert!(end <= (HEAP_START_ADDRESS as usize ) + HEAP_LENGTH);
+
+            unsafe { &mut *(calculate_offset::<T>(offset) as *mut MaybeUninit T) }
+        }
 }
