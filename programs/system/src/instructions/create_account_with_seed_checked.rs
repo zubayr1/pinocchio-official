@@ -45,30 +45,35 @@ pub struct CreateAccountWithSeedChecked<'a, 'b, 'c> {
 impl CreateAccountWithSeed<'_, '_, '_> {
     #[inline(always)]
     pub fn invoke(&self) -> ProgramResult {
-        self.invoke_signed(&[])
+        self.invoke_signed_checked(&[])
     }
 
     #[inline(always)]
-    pub fn invoke_signed(&self, signers: &[Signer]) -> ProgramResult {
-        // checking if the seed is valid
+    pub fn invoke_signed_checked(&self, signers: &[Signer]) -> ProgramResult {
+        // Get lamports from rent
+        let rent = Rent::from_account_info(self.sysvar_rent_account)?;
+        let lamports = rent.minimum_balance(self.space as usize);
+
+        // Check if the seed is valid
         if self.seed.len() > MAX_SEED_LEN {
             return Err(ProgramError::InvalidInstructionData);
         }
 
-        // getting lamports from rent
-        let rent = Rent::from_account_info(self.sysvar_rent_account)?;
-        let lamports = rent.minimum_balance(self.space as usize);
-
-        // checking if the funding account has enough lamports
+        // Check if the funding account has enough lamports
         if self.from.lamports() < lamports {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        // checking if the new account is already initialized
+        // Check if the new account is already initialized
         if !self.to.data_is_empty() {
             return Err(ProgramError::InvalidAccountData);
         }
 
+        self.invoke_signed(signers, lamports)
+    }
+
+    #[inline(always)]
+    fn invoke_signed(&self, signers: &[Signer], lamports: u64) -> ProgramResult {
         // account metadata
         let account_metas: [AccountMeta; 3] = [
             AccountMeta::writable_signer(self.from.key()),

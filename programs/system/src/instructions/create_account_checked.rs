@@ -33,25 +33,30 @@ pub struct CreateAccountChecked<'a> {
 impl CreateAccountChecked<'_> {
     #[inline(always)]
     pub fn invoke(&self) -> ProgramResult {
-        self.invoke_signed(&[])
+        self.invoke_signed_checked(&[])
     }
 
     #[inline(always)]
-    pub fn invoke_signed(&self, signers: &[Signer]) -> ProgramResult {
-        // getting lamports from rent
+    pub fn invoke_signed_checked(&self, signers: &[Signer]) -> ProgramResult {
+        // Get lamports from rent
         let rent = Rent::from_account_info(self.sysvar_rent_account)?;
         let lamports = rent.minimum_balance(self.space as usize);
 
-        // checking if the funding account has enough lamports
+        // Check if the funding account has enough lamports
         if self.from.lamports() < lamports {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        // checking if the new account is already initialized
+        // Check if the new account is already initialized
         if !self.to.data_is_empty() {
             return Err(ProgramError::InvalidAccountData);
         }
 
+        self.invoke_signed(signers, lamports)
+    }
+
+    #[inline(always)]
+    fn invoke_signed(&self, signers: &[Signer], lamports: u64) -> ProgramResult {
         // account metadata
         let account_metas: [AccountMeta; 2] = [
             AccountMeta::writable_signer(self.from.key()),
