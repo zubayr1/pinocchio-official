@@ -3,7 +3,7 @@ use pinocchio::{
     instruction::{AccountMeta, Instruction, Signer},
     program::invoke_signed,
     program_error::ProgramError,
-    pubkey::{self, Pubkey, MAX_SEED_LEN},
+    pubkey::{Pubkey, MAX_SEED_LEN},
     sysvars::rent::Rent,
     ProgramResult,
 };
