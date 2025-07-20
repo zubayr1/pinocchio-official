@@ -7,12 +7,14 @@ pub mod reexport {
     pub use pinocchio::pubkey::Pubkey;
 }
 
-#[cfg(feature = "const")]
-use const_crypto::{bs58::decode_pubkey, sha2::Sha256};
 use core::mem::MaybeUninit;
+#[cfg(feature = "const")]
+pub use five8_const::decode_32_const;
 use pinocchio::pubkey::{Pubkey, MAX_SEEDS, PDA_MARKER};
 #[cfg(target_os = "solana")]
 use pinocchio::syscalls::sol_sha256;
+#[cfg(feature = "const")]
+use sha2_const_stable::Sha256;
 
 /// Derive a [program address][pda] from the given seeds, optional bump and
 /// program id.
@@ -168,20 +170,18 @@ macro_rules! pubkey {
 #[macro_export]
 macro_rules! declare_id {
     ( $id:expr ) => {
-        use $crate::reexport::Pubkey;
-
         #[doc = "The constant program ID."]
-        pub const ID: Pubkey = $crate::from_str($id);
+        pub const ID: $crate::reexport::Pubkey = $crate::from_str($id);
 
         #[doc = "Returns `true` if given pubkey is the program ID."]
         #[inline]
-        pub fn check_id(id: &Pubkey) -> bool {
+        pub fn check_id(id: &$crate::reexport::Pubkey) -> bool {
             id == &ID
         }
 
         #[doc = "Returns the program ID."]
         #[inline]
-        pub const fn id() -> Pubkey {
+        pub const fn id() -> $crate::reexport::Pubkey {
             ID
         }
     };
@@ -191,5 +191,5 @@ macro_rules! declare_id {
 #[cfg(feature = "const")]
 #[inline(always)]
 pub const fn from_str(value: &str) -> Pubkey {
-    decode_pubkey(value)
+    decode_32_const(value)
 }
