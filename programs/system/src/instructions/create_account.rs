@@ -40,15 +40,7 @@ impl<'a> CreateAccount<'a> {
     ) -> Result<Self, ProgramError> {
         let rent = Rent::from_account_info(rent_sysvar)?;
         let lamports = rent.minimum_balance(space as usize);
-
-        if from.lamports() < lamports {
-            return Err(ProgramError::InsufficientFunds);
-        }
-
-        if !to.data_is_empty() {
-            return Err(ProgramError::InvalidAccountData);
-        }
-
+        
         Ok(Self {
             from,
             to,

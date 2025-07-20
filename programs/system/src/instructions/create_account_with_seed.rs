@@ -3,7 +3,7 @@ use pinocchio::{
     instruction::{AccountMeta, Instruction, Signer},
     program::invoke_signed,
     program_error::ProgramError,
-    pubkey::{Pubkey, MAX_SEED_LEN},
+    pubkey::Pubkey,
     sysvars::rent::Rent,
     ProgramResult,
 };
@@ -54,18 +54,6 @@ impl<'a, 'b, 'c> CreateAccountWithSeed<'a, 'b, 'c> {
     ) -> Result<Self, ProgramError> {
         let rent = Rent::from_account_info(rent_sysvar)?;
         let lamports = rent.minimum_balance(space as usize);
-
-        if seed.len() > MAX_SEED_LEN {
-            return Err(ProgramError::InvalidInstructionData);
-        }
-
-        if from.lamports() < lamports {
-            return Err(ProgramError::InsufficientFunds);
-        }
-
-        if !to.data_is_empty() {
-            return Err(ProgramError::InvalidAccountData);
-        }
 
         Ok(Self {
             from,
