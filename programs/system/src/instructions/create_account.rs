@@ -31,7 +31,7 @@ pub struct CreateAccount<'a> {
 }
 
 impl<'a> CreateAccount<'a> {
-    pub fn with_rent_check(
+    pub fn with_minimal_balance(
         from: &'a AccountInfo,
         to: &'a AccountInfo,
         rent_sysvar: &'a AccountInfo,
