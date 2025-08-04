@@ -2,9 +2,9 @@ use pinocchio::{
     account_info::AccountInfo,
     instruction::{AccountMeta, Instruction, Signer},
     program::invoke_signed,
+    program_error::ProgramError,
     pubkey::Pubkey,
     sysvars::rent::Rent,
-    program_error::ProgramError,
     ProgramResult,
 };
 
@@ -35,12 +35,12 @@ impl<'a> CreateAccount<'a> {
         from: &'a AccountInfo,
         to: &'a AccountInfo,
         rent_sysvar: &'a AccountInfo,
-        space: u64,        
+        space: u64,
         owner: &'a Pubkey,
     ) -> Result<Self, ProgramError> {
         let rent = Rent::from_account_info(rent_sysvar)?;
         let lamports = rent.minimum_balance(space as usize);
-        
+
         Ok(Self {
             from,
             to,
