@@ -43,6 +43,7 @@ pub struct CreateAccountWithSeed<'a, 'b, 'c> {
 }
 
 impl<'a, 'b, 'c> CreateAccountWithSeed<'a, 'b, 'c> {
+    #[inline(always)]
     pub fn with_minimal_balance(
         from: &'a AccountInfo,
         to: &'a AccountInfo,

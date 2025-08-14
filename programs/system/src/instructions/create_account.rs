@@ -31,6 +31,7 @@ pub struct CreateAccount<'a> {
 }
 
 impl<'a> CreateAccount<'a> {
+    #[inline(always)]
     pub fn with_minimal_balance(
         from: &'a AccountInfo,
         to: &'a AccountInfo,
